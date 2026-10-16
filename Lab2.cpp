@@ -15,7 +15,6 @@ void DataPreparation() {
     cout << "Enter numbers (enter g to finish): ";
 
     while (cin >> num) {
-        lock_guard<mutex> guard(m);
         numbers.push(num);
     }
     lock_guard<mutex> guard(m);
