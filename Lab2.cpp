@@ -65,3 +65,61 @@ int main()
 
     return 0;
 }
+#===========2============
+
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
+
+using namespace std;
+
+int i = 0;
+mutex m;
+condition_variable cv;
+
+void Waits(int id) {
+    cout << "Thread " << id << " is waiting..." << endl;
+
+    unique_lock<mutex> lk(m);
+    cv.wait(lk, [] { return i == 1; });
+
+    cout << "Thread " << id << " has finished waiting" << endl; 
+
+}
+
+void Awake() {
+    this_thread::sleep_for(chrono::milliseconds(100));
+
+    cout << "Awake: first notification" << endl;
+    cv.notify_all();
+
+    this_thread::sleep_for(chrono::milliseconds(100));
+
+    {
+        lock_guard<mutex> guard(m);
+        i = 1;
+    }
+
+    cout << "Awake: second notification" << endl;
+    cv.notify_all();
+}
+
+
+
+int main()
+{
+    thread t1(Waits, 1);
+    thread t2(Waits, 2);
+    thread t3(Waits, 3);
+
+    thread t4(Awake);
+    t4.join();
+
+    t1.join();
+    t2.join();
+    t3.join();
+
+    return 0;
+}
