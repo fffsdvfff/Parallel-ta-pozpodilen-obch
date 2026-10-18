@@ -65,7 +65,7 @@ int main()
 
     return 0;
 }
-#===========2============
+#===========1.2.2============
 
 #include <iostream>
 #include <thread>
@@ -120,6 +120,78 @@ int main()
     t1.join();
     t2.join();
     t3.join();
+
+    return 0;
+}
+
+#============1.2.3===========
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
+
+using namespace std;
+
+int i = 0;
+mutex m;
+condition_variable cv;
+condition_variable cvDone;
+
+bool stop = false;
+bool printed = false;
+
+void Waits(int id) {
+    unique_lock<mutex> lk(m);
+
+    cv.wait(lk, [] { return i == 1 || stop; });
+
+    if (stop) {
+        return;
+    }
+
+    if (!printed) {
+        cout << "Message from Thread " << id << endl;
+        printed = true;
+        cvDone.notify_one();
+    }
+}
+
+void Notify() {
+    this_thread::sleep_for(chrono::milliseconds(100));
+
+    {
+        lock_guard<mutex> guard(m);
+        i = 1;
+    }
+
+    cv.notify_one();
+}
+
+int main() {
+    thread Thread1(Waits, 1);
+    thread Thread2(Waits, 2);
+    thread Thread3(Waits, 3);
+
+    thread tNotify(Notify);
+
+    tNotify.join();
+
+    {
+        unique_lock<mutex> lk(m);
+        cvDone.wait(lk, [] { return printed; });
+    }
+
+    {
+        lock_guard<mutex> guard(m);
+        stop = true;
+    }
+
+    cv.notify_all();
+
+    Thread1.join();
+    Thread2.join();
+    Thread3.join();
 
     return 0;
 }
