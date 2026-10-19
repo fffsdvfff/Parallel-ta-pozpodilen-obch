@@ -195,3 +195,77 @@ int main() {
 
     return 0;
 }
+
+#============1.2.4===========
+    
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <condition_variable>
+
+using namespace std;
+
+queue<int> numbers;
+mutex m;
+condition_variable cv;
+
+bool finished = false;
+
+void DataPreparation() {
+    int num;
+    cout << "Enter numbers (enter g to finish): ";
+
+    while (cin >> num) {
+        lock_guard<mutex> guard(m);
+        numbers.push(num);
+    }
+
+    {
+        lock_guard<mutex> guard(m);
+        finished = true;
+    }
+
+    cv.notify_one();
+}
+
+bool IsPrime(int n) {
+    if (n < 2) return false;
+
+    for (int i = 2; i <= n / i; i++) {
+        if (n % i == 0) return false;
+    }
+
+    return true;
+}
+
+void DataProcessing() {
+    unique_lock<mutex> lk(m);
+
+    cv.wait(lk, [] {
+        return !numbers.empty() || finished;
+        });
+
+    cout << "Prime numbers: ";
+
+    while (!numbers.empty()) {
+        int num = numbers.front();
+        numbers.pop();
+
+        if (IsPrime(num)) {
+            cout << num << " ";
+        }
+    }
+
+    cout << endl;
+}
+
+int main() {
+    thread t1(DataPreparation);
+    thread t2(DataProcessing);
+
+    t1.join();
+    t2.join();
+
+    return 0;
+}
